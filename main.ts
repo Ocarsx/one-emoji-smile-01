@@ -11,7 +11,7 @@
 // Node 22, no dependencies, no network. The harness runs the program with
 // MAKEFUN_OUTPUT_DIR set; fall back to /output/entry.txt when it is not.
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const EMOJI = "😊"; // U+1F60A SMILING FACE WITH SMILING EYES
@@ -28,3 +28,14 @@ if (graphemes.length !== 1 || EMOJI.length < 1 || EMOJI.length > 8) {
 
 mkdirSync(outputDir, { recursive: true });
 writeFileSync(outputPath, EMOJI, "utf8");
+
+// Post-write verification: read the file back and confirm its bytes are
+// exactly the UTF-8 encoding of 😊 (f0 9f 98 8a) and a single grapheme.
+// A silent partial write or encoding slip must fail loudly, not ship.
+const written = readFileSync(outputPath);
+const expected = Buffer.from(EMOJI, "utf8");
+if (!written.equals(expected) || Array.from(written.toString("utf8")).length !== 1) {
+  throw new Error(
+    `post-write verification failed: expected bytes ${expected.toString("hex")}, got ${written.toString("hex")}`,
+  );
+}
